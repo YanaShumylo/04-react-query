@@ -1,7 +1,7 @@
-// import css from "./App.module.css";
 import { useState } from "react";
-import toast from "react-hot-toast";
-
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import Pagination from "../Pagination/Pagination.tsx";
+import { Toaster } from "react-hot-toast";
 import SearchBar from "../SearchBar/SearchBar";
 import MovieGrid from "../MovieGrid/MovieGrid";
 import MovieModal from "../MovieModal/MovieModal";
@@ -12,31 +12,29 @@ import type { Movie } from "../../types/movie.ts";
 import { fetchMovies } from "../../services/movieService";
 
 export default function App() {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isError, setIsError] = useState(false);
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [currentPage, setPage] = useState(1);
+  const [query, setQuery] = useState("");
+const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-  const handleSearch = async (query: string) => {
-    try {
-      setIsLoading(true);
-      setIsError(false);
-      setMovies([]); 
+  const {data, isLoading, isError, isSuccess} = useQuery<{
+    results: Movie[];
+    totalPages: number;
+  }>({
+  queryKey: ['movie', query, currentPage], 
+    queryFn: () => fetchMovies(query, currentPage), 
+    enabled: query !== "",
+  placeholderData: keepPreviousData,
+});
+  
+  const totalPages = data?.totalPages ?? 0;
 
-      const data = await fetchMovies(query);
-
-      if (data.length === 0) {
-        toast.error("No movies found for your request.");
-      }
-
-      setMovies(data);
-    } catch {
-      setIsError(true);
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSearch = (newQuery: string) => {
+     
+    if (newQuery === query) return;
+    setQuery(newQuery);
+    setPage(1);
   };
+    
 
   const handleSelectMovie = (movie: Movie) => {
     setSelectedMovie(movie);
@@ -46,20 +44,29 @@ export default function App() {
     setSelectedMovie(null);
   };
 
+  
   return (
     <>
+      <Toaster position="top-right" />
       <SearchBar onSubmit={handleSearch} />
-
+{isSuccess && totalPages > 1 && (
+        <Pagination 
+          page ={currentPage}
+          totalPages={totalPages}
+          onChange={setPage}
+        />
+      )}
+      
       {isLoading && <Loader />}
       {isError && <ErrorMessage />}
 
-      {!isLoading && !isError && movies.length > 0 && (
-        <MovieGrid movies={movies} onSelect={handleSelectMovie} />
-      )}
+     {isSuccess && data.results.length > 0 && (
+  <MovieGrid movies={data.results} onSelect={handleSelectMovie} />
+)}
 
       {selectedMovie && (
         <MovieModal movie={selectedMovie} onClose={handleCloseModal} />
       )}
-    </>
+       </>
   );
 }
