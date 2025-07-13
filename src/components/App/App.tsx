@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import Pagination from "../Pagination/Pagination.tsx";
+import ReactPaginate from "react-paginate";
+import css from "../Pagination/Pagination.module.css"; 
 import { Toaster, toast } from "react-hot-toast";
 import SearchBar from "../SearchBar/SearchBar";
 import MovieGrid from "../MovieGrid/MovieGrid";
@@ -16,7 +17,7 @@ export default function App() {
   const [query, setQuery] = useState("");
 const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-  const {data, isLoading, isError, isSuccess} = useQuery<MovieQueryResponse>({ 
+  const {data, isLoading, isError, isSuccess, isFetching} = useQuery<MovieQueryResponse>({ 
   queryKey: ['movie', query, currentPage], 
     queryFn: () => fetchMovies(query, currentPage), 
     enabled: query !== "",
@@ -52,14 +53,20 @@ const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
       <Toaster position="top-left" />
       <SearchBar onSubmit={handleSearch} />
 {isSuccess && totalPages > 1 && (
-        <Pagination 
-          page ={currentPage}
-          totalPages={totalPages}
-          onChange={setPage}
-        />
-      )}
+      <ReactPaginate
+    pageCount={totalPages}
+    pageRangeDisplayed={5}
+    marginPagesDisplayed={1}
+    onPageChange={({ selected }) => setPage(selected + 1)}
+    forcePage={currentPage - 1}
+    containerClassName={css.pagination}
+    activeClassName={css.active}
+    nextLabel="→"
+    previousLabel="←"
+  />
+)}
       
-      {isLoading && <Loader />}
+      {(isLoading || isFetching) && <Loader />}
       {isError && <ErrorMessage />}
 
      {isSuccess && data.results.length > 0 && (

@@ -12,7 +12,7 @@ export interface MovieQueryResponse {
   totalPages: number;
 }
 
-export const fetchMovies = async (query: string, page = 1): Promise<MovieQueryResponse> => {
+export const fetchMovies = async (query: string, page: number): Promise<MovieQueryResponse> => {
   try {
     const response = await axios.get<MoviesHttpResponse>(
     `https://api.themoviedb.org/3/search/movie`,
@@ -29,6 +29,12 @@ export const fetchMovies = async (query: string, page = 1): Promise<MovieQueryRe
       totalPages: response.data.total_pages,
     };
   } catch (error) {
-    throw new Error("Failed to fetch movies. Please try again later.");
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const message = error.response?.data?.status_message || error.message;
+      throw new Error(`Failed to fetch movies: ${status ? `(${status})` : ""} ${message}`);
+    } else {
+      throw new Error("An unknown error occurred.");
+    }
   }
 };
